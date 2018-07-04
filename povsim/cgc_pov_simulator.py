@@ -66,7 +66,7 @@ class CGCPovSimulator(object):
             l.debug("process %d did not terminate on its own, reaping", pid)
             kill_proc(pid)
 
-    def test_binary_pov(self, pov_path, cb_path, enable_randomness=True, debug=False, bitflip=False, timeout=15, times=1):
+    def test_binary_pov(self, pov_path, cb_path, enable_randomness=True, debug=False, qemu_debug=False, bitflip=False, timeout=15, times=1):
         """
         Test a binary POV
 
@@ -84,8 +84,9 @@ class CGCPovSimulator(object):
 
                 args = [sys.executable, __file__, pov_path, cb_path,
                         str(int(enable_randomness)),
-                        str(int(debug)),
                         str(int(bitflip)),
+                        str(int(debug)),
+                        str(int(qemu_debug)),
                         str(timeout),
                         str(times)]
 
@@ -108,20 +109,20 @@ class CGCPovSimulator(object):
                 results = [ ]
                 for _ in xrange(times):
                     results.append(self._test_binary_pov(pov_path, cb_path, enable_randomness, debug,\
-                            bitflip, timeout))
+                            qemu_debug, bitflip, timeout))
 
             return results
 
         else:
-            return self._test_binary_pov(pov_path, cb_path, enable_randomness, debug, bitflip, timeout)
+            return self._test_binary_pov(pov_path, cb_path, enable_randomness, debug, qemu_debug, bitflip, timeout)
 
 
-    def _multitest_binary_pov(self, pov_path, cb_path, enable_randomness, debug, bitflip, timeout, times):
+    def _multitest_binary_pov(self, pov_path, cb_path, enable_randomness, debug, qemu_debug, bitflip, timeout, times):
 
             pool = Pool(processes=4)
 
             res = [pool.apply_async(self._test_binary_pov,
-                                    (pov_path, cb_path, enable_randomness, debug, bitflip, timeout))
+                                    (pov_path, cb_path, enable_randomness, debug, qemu_debug, bitflip, timeout))
                                     for _ in range(times)]
 
             results = [ ]
@@ -133,7 +134,7 @@ class CGCPovSimulator(object):
 
             return results
 
-    def _test_binary_pov(self, pov_filename, cb_path, enable_randomness=True, debug=False, bitflip=False, timeout=15):
+    def _test_binary_pov(self, pov_filename, cb_path, enable_randomness=True, debug=False, qemu_debug=False, bitflip=False, timeout=15):
         # Test the binary pov
         # sanity checks
         if not os.path.isfile(pov_filename):
@@ -189,6 +190,8 @@ class CGCPovSimulator(object):
                     random.seed()
                     seed = str(random.randint(0, 100000))
                     argv = [qemu_path, "-seed", seed, "-magicdump", "magic", cb_path]
+                    if qemu_debug:
+                        argv = [qemu_path, "-g", "1234", "-seed", seed, "-magicdump", "magic", cb_path]
                 else:
                     argv = [qemu_path, "-magicdump", "magic", cb_path]
                 if bitflip:
@@ -434,8 +437,9 @@ if __name__ == "__main__":
     _enable_randomness = bool(int(sys.argv[3]))
     _bitflip = bool(int(sys.argv[4]))
     _debug = bool(int(sys.argv[5]))
-    _timeout = int(sys.argv[6])
-    _times = int(sys.argv[7])
+    _debug_qemu = bool(int(sys.argv[6]))
+    _timeout = int(sys.argv[7])
+    _times = int(sys.argv[8])
 
     #_results = cps._multitest_binary_pov(_pov_path,
     #        _cb_path, _enable_randomness, _bitflip, _debug, _timeout, _times)
@@ -445,4 +449,4 @@ if __name__ == "__main__":
 
     for _i in xrange(_times):
         print (str(int(cps._test_binary_pov(_pov_path,
-            _cb_path, _enable_randomness, _bitflip, _debug, _timeout))))
+            _cb_path, _enable_randomness, _debug, _qemu_debug, _bitflip, _timeout))))
